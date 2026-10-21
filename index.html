@@ -655,7 +655,7 @@ body.sheet-open { overflow: hidden; }
 .study-cards { display: grid; gap: 16px; }
 .fold-head { padding: var(--pad); border-bottom: 1px solid var(--line); }
 .fold-title { display: flex; align-items: baseline; gap: 10px; }
-.fold-title h3 { min-width: 0; margin: 0; font-size: var(--fs-xl); font-weight: 700; line-height: 1.3; letter-spacing: -0.02em; text-wrap: balance; }
+.fold-title h3 { min-width: 0; margin: 0; font-size: var(--fs-l); font-weight: 700; line-height: 1.3; letter-spacing: -0.02em; text-wrap: balance; }
 .fold-head p { margin: 8px 0 0; color: var(--muted); font-size: var(--fs-s); }
 .card-badge {
   flex: 0 0 auto;
@@ -735,7 +735,6 @@ body.sheet-open { overflow: hidden; }
   background: var(--disclosure-bg);
   box-shadow: inset 3px 0 0 var(--accent), 0 1px 0 var(--line);
 }
-.nested-composer[open] > summary,
 .term-row[open] > summary {
   position: sticky;
   top: calc(var(--stick) + 52px);
@@ -745,6 +744,24 @@ body.sheet-open { overflow: hidden; }
   padding-left: var(--pad);
   background: var(--disclosure-bg);
   box-shadow: inset 3px 0 0 var(--accent), 0 1px 0 var(--line);
+}
+/* 한 단계 안쪽(작가 줄)은 바깥 줄과 구분되게: 배경은 안쪽 폭만, 컬러바 없음,
+   펼친 내용은 왼쪽 안내선과 함께 한 칸 들여 쓴다 */
+.nested-composer[open] > summary {
+  position: sticky;
+  top: calc(var(--stick) + 52px);
+  z-index: 2;
+  margin: 0 -12px;
+  padding-right: 12px;
+  padding-left: 12px;
+  border-radius: 8px;
+  background: var(--disclosure-bg);
+  box-shadow: 0 0 0 5px var(--card);
+}
+.nested-composer > .study-card-body {
+  margin: 4px 0 8px 0;
+  padding: 8px 0 8px 14px;
+  border-left: 2px solid var(--line);
 }
 /* 사전 카드에 바로 나오는 용어 줄은 카드의 첫 단계라서 펼친 내용까지 컬러바를 이어 세운다 */
 .fold-list .term-row[open] > summary { top: var(--stick); }

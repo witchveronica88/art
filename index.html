@@ -544,13 +544,14 @@ details:not([open]) > :not(summary) { display: none; }
   text-align: left;
 }
 .timeline-row:first-child { border-top: 0; }
-.timeline-year { color: var(--muted); font-size: var(--fs-m); font-weight: 700; line-height: inherit; }
+.timeline-year { color: var(--muted); font-size: var(--fs-m); font-weight: 400; line-height: inherit; }
 .timeline-copy { min-width: 0; color: var(--text); font-size: var(--fs-m); line-height: inherit; }
 .timeline-copy .study-link {
   display: inline;
   min-height: 0;
   padding: 0;
   font-size: var(--fs-m);
+  font-weight: 400;
   line-height: inherit;
   vertical-align: baseline;
 }
@@ -834,7 +835,7 @@ body.sheet-open { overflow: hidden; }
       <section class="records" id="records-panel" role="tabpanel" aria-labelledby="filter-all" aria-live="polite" tabindex="0">
         <div class="empty" id="empty" role="status"><strong>기록한 전시가 아직 없음</strong><span id="empty-copy">전시 추가를 눌러 보러 갈 전시를 기록하세요.</span></div>
       </section>
-      <p class="footnote">전시 일정과 운영 시간은 바뀔 수 있음. 관람 전 미술관 공식 안내 확인. 기록은 이 기기에만 저장됨.</p>
+      <p class="footnote">전시 일정과 운영 시간은 바뀔 수 있음. 관람 전 미술관 공식 안내 확인. 직접 추가한 기록은 이 기기에만 저장됨.</p>
     </section>
 
     <section class="view-panel" id="study-view" role="tabpanel" aria-labelledby="tab-eras" hidden>
@@ -1095,7 +1096,7 @@ body.sheet-open { overflow: hidden; }
       names.sort(function (a, b) { return b.length - a.length; });
       D.timeline.forEach(function (ev) {
         var row = el('div', 'timeline-row');
-        row.appendChild(el('strong', 'timeline-year', ev[0]));
+        row.appendChild(el('span', 'timeline-year', ev[0]));
         var copy = el('span', 'timeline-copy');
         var text = ev[1];
         var matches = [];
@@ -1108,18 +1109,8 @@ body.sheet-open { overflow: hidden; }
         matches.forEach(function (m) {
           if (m.index < cursor) return;
           copy.appendChild(document.createTextNode(text.slice(cursor, m.index)));
-          var end = m.index + m.name.length;
-          var particle = /^[이가은는의을를과와]/.test(text.slice(end)) ? text.charAt(end) : '';
-          var link = createLink(m.name, 'artist', aliases[m.name] || m.name);
-          if (particle) link.querySelector('.study-link-key').appendChild(document.createTextNode(particle));
-          copy.appendChild(link);
-          cursor = end + particle.length;
-          if (/^\s/.test(text.slice(cursor))) {
-            copy.appendChild(document.createTextNode(' '));
-            cursor += (text.slice(cursor).match(/^\s+/) || [''])[0].length;
-          } else if (text.charAt(cursor) && !/^[,.;:!?…)]/.test(text.charAt(cursor))) {
-            copy.appendChild(document.createTextNode(' '));
-          }
+          copy.appendChild(createLink(m.name, 'artist', aliases[m.name] || m.name));
+          cursor = m.index + m.name.length;
         });
         copy.appendChild(document.createTextNode(text.slice(cursor)));
         row.appendChild(copy);

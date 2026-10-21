@@ -112,7 +112,7 @@ button { cursor: pointer; }
   left: 0;
   z-index: 6;
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-columns: repeat(4, minmax(0, 1fr));
   padding: 0 max(16px, calc(50% - 280px)) env(safe-area-inset-bottom);
   border-top: 1px solid var(--line);
   background: var(--card);
@@ -127,7 +127,7 @@ button { cursor: pointer; }
   font-size: var(--fs-s);
   font-weight: 700;
 }
-.primary-tab { min-height: 56px; border-radius: 0; }
+.primary-tab { min-height: 56px; padding: 8px 2px; border-radius: 0; white-space: nowrap; }
 .primary-tab[aria-selected="true"] { color: var(--accent); }
 
 .filters,
@@ -819,7 +819,9 @@ body.sheet-open { overflow: hidden; }
     <div class="brand-row"><h1>Art</h1></div>
     <nav class="primary-tabs" aria-label="미술 기록 메뉴" role="tablist">
       <button class="primary-tab" id="tab-exhibits" type="button" role="tab" aria-controls="exhibit-view" aria-selected="true" data-view="exhibits">전시 기록</button>
-      <button class="primary-tab" id="tab-study" type="button" role="tab" aria-controls="study-view" aria-selected="false" data-view="study">미술 공부</button>
+      <button class="primary-tab" id="tab-eras" type="button" role="tab" aria-controls="study-view" aria-selected="false" data-view="study" data-study-section="eras">시대·작가</button>
+      <button class="primary-tab" id="tab-timeline" type="button" role="tab" aria-controls="study-view" aria-selected="false" data-view="study" data-study-section="timeline">연표</button>
+      <button class="primary-tab" id="tab-dictionary" type="button" role="tab" aria-controls="study-view" aria-selected="false" data-view="study" data-study-section="dictionary">사전</button>
     </nav>
 
     <section class="view-panel" id="exhibit-view" role="tabpanel" aria-labelledby="tab-exhibits">
@@ -835,17 +837,11 @@ body.sheet-open { overflow: hidden; }
       <p class="footnote">전시 일정과 운영 시간은 바뀔 수 있음. 관람 전 미술관 공식 안내 확인. 기록은 이 기기에만 저장됨.</p>
     </section>
 
-    <section class="view-panel" id="study-view" role="tabpanel" aria-labelledby="tab-study" hidden>
+    <section class="view-panel" id="study-view" role="tabpanel" aria-labelledby="tab-eras" hidden>
       <div class="study-search-wrap">
         <input class="study-search" id="study-search" type="search" inputmode="search" autocomplete="off" aria-label="시대, 작가, 대표작, 미술사 연표, 사전 항목 통합 검색" aria-controls="study-search-results" aria-expanded="false" placeholder="미술 공부 전체 검색">
         <div class="search-results" id="study-search-results" role="listbox" hidden></div>
       </div>
-
-      <nav class="study-tabs" aria-label="미술 공부 목차" role="tablist">
-        <button class="study-tab" type="button" role="tab" aria-selected="true" data-study-section="eras">시대와 작가</button>
-        <button class="study-tab" type="button" role="tab" aria-selected="false" data-study-section="timeline">연표</button>
-        <button class="study-tab" type="button" role="tab" aria-selected="false" data-study-section="dictionary">미술 사전</button>
-      </nav>
 
       <section class="study-panel" id="study-eras" data-study-panel="eras">
         <nav class="chip-tabs" id="region-tabs" role="tablist" aria-label="지역 선택"></nav>
@@ -923,7 +919,6 @@ body.sheet-open { overflow: hidden; }
     var primaryTabs = qsa('.primary-tab');
     var exhibitView = $('exhibit-view');
     var studyView = $('study-view');
-    var studyTabs = qsa('.study-tab');
     var studyPanels = qsa('.study-panel');
     var toast = $('toast');
     var toastTimer;
@@ -1191,12 +1186,17 @@ body.sheet-open { overflow: hidden; }
     }
 
     /* ---------- study: navigation ---------- */
-    function activateStudySection(section) {
-      studyTabs.forEach(function (tab) {
-        var sel = tab.getAttribute('data-study-section') === section;
-        tab.setAttribute('aria-selected', sel ? 'true' : 'false');
-        tab.tabIndex = sel ? 0 : -1;
+    function selectPrimaryTab(button) {
+      primaryTabs.forEach(function (t) {
+        var sel = t === button;
+        t.setAttribute('aria-selected', sel ? 'true' : 'false');
+        t.tabIndex = sel ? 0 : -1;
       });
+    }
+    function activateStudySection(section) {
+      selectPrimaryTab(primaryTabs.filter(function (t) { return t.getAttribute('data-study-section') === section; })[0]);
+      exhibitView.hidden = true;
+      studyView.hidden = false;
       studyPanels.forEach(function (p) { p.hidden = p.getAttribute('data-study-panel') !== section; });
     }
     function syncChipTabs(nav, attr, value) {
@@ -1223,14 +1223,11 @@ body.sheet-open { overflow: hidden; }
       });
     }
     function activatePrimaryTab(button) {
-      var view = button.getAttribute('data-view');
-      primaryTabs.forEach(function (t) {
-        var sel = t === button;
-        t.setAttribute('aria-selected', sel ? 'true' : 'false');
-        t.tabIndex = sel ? 0 : -1;
-      });
-      exhibitView.hidden = view !== 'exhibits';
-      studyView.hidden = view !== 'study';
+      var section = button.getAttribute('data-study-section');
+      if (section) { activateStudySection(section); return; }
+      selectPrimaryTab(button);
+      exhibitView.hidden = false;
+      studyView.hidden = true;
     }
     function closeSearch() {
       $('study-search').value = '';
@@ -1251,7 +1248,6 @@ body.sheet-open { overflow: hidden; }
     }
     function goTo(kind, value) {
       closeSearch();
-      activatePrimaryTab($('tab-study'));
       if (kind === 'artist' || kind === 'work') {
         var parts = kind === 'work' ? value.split('::') : [value];
         var a = artistByName[parts[0]];
@@ -1595,10 +1591,8 @@ body.sheet-open { overflow: hidden; }
         });
       });
     }
-    primaryTabs.forEach(function (b) { b.addEventListener('click', function () { closeSearch(); activatePrimaryTab(b); }); });
+    primaryTabs.forEach(function (b) { b.addEventListener('click', function () { closeSearch(); activatePrimaryTab(b); window.scrollTo(0, 0); }); });
     wireTablist(primaryTabs, activatePrimaryTab);
-    studyTabs.forEach(function (b) { b.addEventListener('click', function () { closeSearch(); activateStudySection(b.getAttribute('data-study-section')); }); });
-    wireTablist(studyTabs, function (b) { activateStudySection(b.getAttribute('data-study-section')); });
     var filters = qsa('.filter');
     filters.forEach(function (b) { b.addEventListener('click', function () { activateFilter(b); }); });
     wireTablist(filters, activateFilter);

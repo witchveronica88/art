@@ -178,7 +178,7 @@ button { cursor: pointer; }
   border-radius: 12px;
   background: var(--card);
 }
-/* 전시 카드와 시대 · 연표 · 사전 카드(fold-card)는 같은 모양이다 */
+/* 전시 카드와 시대 · 연대기 · 사전 카드(fold-card)는 같은 모양이다 */
 .record,
 .fold-card {
   overflow: clip;
@@ -515,6 +515,7 @@ details:not([open]) > :not(summary) { display: none; }
   font-size: var(--fs-s);
   font-weight: 400;
 }
+.text-link { color: var(--accent); font-weight: inherit; text-decoration: none; }
 .study-link::after,
 .composer-link::after { content: none; }
 .source-link {
@@ -819,9 +820,9 @@ body.sheet-open { overflow: hidden; }
   <main class="wrap">
     <div class="brand-row"><h1>Art</h1></div>
     <nav class="primary-tabs" aria-label="미술 기록 메뉴" role="tablist">
-      <button class="primary-tab" id="tab-exhibits" type="button" role="tab" aria-controls="exhibit-view" aria-selected="true" data-view="exhibits">전시 기록</button>
+      <button class="primary-tab" id="tab-exhibits" type="button" role="tab" aria-controls="exhibit-view" aria-selected="true" data-view="exhibits">기록</button>
       <button class="primary-tab" id="tab-eras" type="button" role="tab" aria-controls="study-view" aria-selected="false" data-view="study" data-study-section="eras">시대·작가</button>
-      <button class="primary-tab" id="tab-timeline" type="button" role="tab" aria-controls="study-view" aria-selected="false" data-view="study" data-study-section="timeline">연표</button>
+      <button class="primary-tab" id="tab-timeline" type="button" role="tab" aria-controls="study-view" aria-selected="false" data-view="study" data-study-section="timeline">연대기</button>
       <button class="primary-tab" id="tab-dictionary" type="button" role="tab" aria-controls="study-view" aria-selected="false" data-view="study" data-study-section="dictionary">사전</button>
     </nav>
 
@@ -840,7 +841,7 @@ body.sheet-open { overflow: hidden; }
 
     <section class="view-panel" id="study-view" role="tabpanel" aria-labelledby="tab-eras" hidden>
       <div class="study-search-wrap">
-        <input class="study-search" id="study-search" type="search" inputmode="search" autocomplete="off" aria-label="시대, 작가, 대표작, 미술사 연표, 사전 항목 통합 검색" aria-controls="study-search-results" aria-expanded="false" placeholder="미술 공부 전체 검색">
+        <input class="study-search" id="study-search" type="search" inputmode="search" autocomplete="off" aria-label="시대, 작가, 대표작, 미술사 연대기, 사전 항목 통합 검색" aria-controls="study-search-results" aria-expanded="false" placeholder="미술 공부 전체 검색">
         <div class="search-results" id="study-search-results" role="listbox" hidden></div>
       </div>
 
@@ -852,7 +853,7 @@ body.sheet-open { overflow: hidden; }
       <section class="study-panel" id="study-timeline" data-study-panel="timeline" hidden>
         <section class="fold-card">
           <div class="fold-head">
-            <div class="fold-title"><h3>미술사 연표</h3><span class="card-badge" id="timeline-count"></span></div>
+            <div class="fold-title"><h3>미술사 연대기</h3><span class="card-badge" id="timeline-count"></span></div>
             <p>색이 있는 이름을 누르면 작가 설명으로 이동</p>
           </div>
           <div class="timeline-list" id="timeline-list"></div>
@@ -959,14 +960,50 @@ body.sheet-open { overflow: hidden; }
       b.appendChild(el('span', 'study-link-key', label));
       return b;
     }
-    function appendLinkGroup(parent, label, items, kind) {
-      if (!items.length) return;
-      var block = el('div', 'related-block');
-      block.appendChild(el('span', 'related-label', label));
-      var list = el('div', 'study-link-list');
-      items.forEach(function (n) { list.appendChild(createLink(n, kind, n)); });
-      block.appendChild(list);
-      parent.appendChild(block);
+    // 글 속 작가 · 사조 이름에 바로 링크를 건다. 이름 글자만 색을 바꾸고(조사는 빼고), 같은 묶음에서는 처음 한 번만 건다.
+    var linkTargets = D.artists.map(function (a) { return { name: a.short, kind: 'artist', value: a.short }; })
+      .concat(Object.keys(aliases).map(function (n) { return { name: n, kind: 'artist', value: aliases[n] }; }))
+      .concat(D.terms.filter(function (t) { return t.category === '사조'; }).map(function (t) { return { name: t.name, kind: 'term', value: t.name }; }))
+      .sort(function (a, b) { return b.name.length - a.name.length; });
+    function createTextLink(label, kind, value) {
+      var b = el('a', 'text-link', label);  // 버튼과 달리 글줄 안에서 앞뒤 글자와 자연스럽게 줄바꿈된다
+      b.href = '#';
+      b.setAttribute('data-link-kind', kind);
+      b.setAttribute('data-link-value', value);
+      return b;
+    }
+    function appendLinked(parent, text, seen, skip) {
+      seen = seen || {};
+      var matches = [];
+      linkTargets.forEach(function (t) {
+        if (t.value === skip) return;
+        var start = 0, idx;
+        while ((idx = text.indexOf(t.name, start)) !== -1) {
+          start = idx + t.name.length;
+          var before = text.charAt(idx - 1), after = text.charAt(start);
+          if (/[가-힣]/.test(before)) continue;
+          // 두 글자 이름은 뒤에 조사가 아닌 한글이 붙으면 다른 낱말이다 (예: 달리한, 다다익선)
+          if (t.name.length <= 2 && /[가-힣]/.test(after) && !/[이가은는의을를과와도로에]/.test(after)) continue;
+          matches.push({ index: idx, end: start, target: t });
+        }
+      });
+      matches.sort(function (a, b) { return a.index - b.index || b.end - a.end; });
+      var cursor = 0;
+      matches.forEach(function (m) {
+        if (m.index < cursor || seen[m.target.value]) return;
+        seen[m.target.value] = true;
+        parent.appendChild(document.createTextNode(text.slice(cursor, m.index)));
+        parent.appendChild(createTextLink(m.target.name, m.target.kind, m.target.value));
+        cursor = m.end;
+      });
+      parent.appendChild(document.createTextNode(text.slice(cursor)));
+      return parent;
+    }
+    function appendLinkedList(parent, items, skip) {
+      var ul = el('ul');
+      var seen = {};
+      items.forEach(function (t) { ul.appendChild(appendLinked(el('li'), t, seen, skip)); });
+      parent.appendChild(ul);
     }
     function appendGenreLinks(parent, genres) {
       genres.split(', ').forEach(function (g) {
@@ -982,7 +1019,7 @@ body.sheet-open { overflow: hidden; }
       row.appendChild(el('h3', '', title));
       if (badge) row.appendChild(el('span', 'card-badge', badge));
       head.appendChild(row);
-      if (text) head.appendChild(el('p', '', text));
+      if (text) head.appendChild(appendLinked(el('p'), text));
       return head;
     }
     function createFoldSection(label, meta, bodyClass) {
@@ -1015,13 +1052,13 @@ body.sheet-open { overflow: hidden; }
 
         var works = era.listen.split(/, (?=[^」]*(?:「|$))/);
         var first = createFoldSection('먼저 볼 작품', works.length + '점');
-        appendList(first.body, works);
+        appendLinkedList(first.body, works);
         group.appendChild(first.section);
 
         var features = createFoldSection('시대 특징', era.points.length + '가지');
-        appendList(features.body, era.points);
+        appendLinkedList(features.body, era.points);
         var gen = el('div', 'related-block era-genres');
-        gen.appendChild(el('span', 'related-label', '함께 보기'));
+        gen.appendChild(el('span', 'related-label', '주요 장르'));
         var gl = el('div', 'study-link-list');
         appendGenreLinks(gl, era.genres);
         gen.appendChild(gl);
@@ -1062,23 +1099,22 @@ body.sheet-open { overflow: hidden; }
 
         var body = el('div', 'study-card-body');
         body.appendChild(el('p', 'composer-detail-name', info.latin + ' · ' + info.country));
-        body.appendChild(el('p', '', a.summary));
+        body.appendChild(appendLinked(el('p'), a.summary, {}, a.short));
         body.appendChild(el('h4', '', '감상 포인트'));
-        appendList(body, a.view);
+        appendLinkedList(body, a.view, a.short);
         body.appendChild(el('h4', '', '대표작'));
         var ul = el('ul', 'work-list');
         a.works.forEach(function (w, wi) {
           var parts = w.split(' — ');
           var li = el('li', 'work-row');
           li.appendChild(el('strong', 'work-title', parts[0]));
-          if (parts[1]) li.appendChild(el('span', 'work-note', parts.slice(1).join(' — ')));
+          if (parts[1]) li.appendChild(appendLinked(el('span', 'work-note'), parts.slice(1).join(' — '), {}, a.short));
           li.id = a.id + '-work-' + (wi + 1);
           ul.appendChild(li);
         });
         body.appendChild(ul);
         body.appendChild(el('h4', '', '생애'));
-        appendList(body, a.life);
-        appendLinkGroup(body, '함께 보기', a.together.split(', '), 'artist');
+        appendLinkedList(body, a.life, a.short);
         card.appendChild(body);
 
         var holder = qsa('[data-era-artists]').filter(function (l) { return l.getAttribute('data-era-artists') === a.era; })[0];
@@ -1092,27 +1128,11 @@ body.sheet-open { overflow: hidden; }
     function renderTimeline() {
       var list = $('timeline-list');
       $('timeline-count').textContent = D.timeline.length + '개';
-      var names = D.artists.map(function (a) { return a.short; }).concat(Object.keys(aliases));
-      names.sort(function (a, b) { return b.length - a.length; });
       D.timeline.forEach(function (ev) {
         var row = el('div', 'timeline-row');
         row.appendChild(el('span', 'timeline-year', ev[0]));
         var copy = el('span', 'timeline-copy');
-        var text = ev[1];
-        var matches = [];
-        names.forEach(function (n) {
-          var start = 0, idx;
-          while ((idx = text.indexOf(n, start)) !== -1) { matches.push({ index: idx, name: n }); start = idx + n.length; }
-        });
-        matches.sort(function (a, b) { return a.index - b.index || b.name.length - a.name.length; });
-        var cursor = 0;
-        matches.forEach(function (m) {
-          if (m.index < cursor) return;
-          copy.appendChild(document.createTextNode(text.slice(cursor, m.index)));
-          copy.appendChild(createLink(m.name, 'artist', aliases[m.name] || m.name));
-          cursor = m.index + m.name.length;
-        });
-        copy.appendChild(document.createTextNode(text.slice(cursor)));
+        appendLinked(copy, ev[1]);
         row.appendChild(copy);
         list.appendChild(row);
       });
@@ -1149,25 +1169,7 @@ body.sheet-open { overflow: hidden; }
           sm.appendChild(el('span', 'term-name', t.name));
           row.appendChild(sm);
           var body = el('div', 'term-body');
-          body.appendChild(el('p', 'term-definition', t.description));
-          var related = [];
-          D.artists.forEach(function (a) {
-            var copy = [a.summary].concat(a.life, a.works, a.view).join(' ');
-            if (related.length < 3 && copy.indexOf(t.name) !== -1) related.push({ label: a.short, kind: 'artist', value: a.short });
-          });
-          if (related.length < 3) {
-            D.eras.forEach(function (e) {
-              if (related.length < 3 && (e.genres + ' ' + e.points.join(' ')).indexOf(t.name) !== -1) related.push({ label: e.name, kind: 'era', value: e.name });
-            });
-          }
-          if (related.length) {
-            var rb = el('div', 'related-block');
-            rb.appendChild(el('span', 'related-label', '함께 보기'));
-            var rl = el('div', 'study-link-list');
-            related.forEach(function (r) { rl.appendChild(createLink(r.label, r.kind, r.value)); });
-            rb.appendChild(rl);
-            body.appendChild(rb);
-          }
+          body.appendChild(appendLinked(el('p', 'term-definition'), t.description, {}, t.name));
           row.appendChild(body);
           termList.appendChild(row);
         });
@@ -1303,7 +1305,7 @@ body.sheet-open { overflow: hidden; }
         });
       });
       var years = D.timeline.map(function (t) { return t[0]; });
-      e.push({ kind: 'timeline', type: '연표', title: '미술사 연표', subtitle: years[0] + '–' + years[years.length - 1] + ' · ' + D.timeline.length + '개 사건', value: 'timeline', search: '미술사 연표 ' + D.timeline.map(function (t) { return t.join(' '); }).join(' ') });
+      e.push({ kind: 'timeline', type: '연대기', title: '미술사 연대기', subtitle: years[0] + '–' + years[years.length - 1] + ' · ' + D.timeline.length + '개 사건', value: 'timeline', search: '미술사 연대기 연표 ' + D.timeline.map(function (t) { return t.join(' '); }).join(' ') });
       e.push({ kind: 'section', type: '사전', title: '미술 사전', subtitle: D.terms.length + '개 항목 · ' + categories.length + '개 분류', value: 'dictionary', search: '사전 ' + categories.join(' ') });
       D.terms.forEach(function (t) {
         e.push({ kind: 'term', type: '사전', title: t.name, subtitle: t.category, value: t.name, search: t.name + ' ' + t.description });
@@ -1625,6 +1627,7 @@ body.sheet-open { overflow: hidden; }
     document.addEventListener('click', function (event) {
       var link = event.target.closest('[data-link-kind]');
       if (!link) return;
+      event.preventDefault();
       goTo(link.getAttribute('data-link-kind'), link.getAttribute('data-link-value'));
     });
 

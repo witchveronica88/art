@@ -54,14 +54,12 @@
 html {
   overflow-x: clip;
   scroll-behavior: smooth;
-  overscroll-behavior: none;
   background: var(--bg);
 }
 body {
   margin: 0;
   min-width: 0;
   overflow-wrap: break-word;
-  overscroll-behavior: none;
   background: var(--bg);
   color: var(--text);
   font-family: Pretendard, "Apple SD Gothic Neo", "Noto Sans KR", sans-serif;
@@ -362,7 +360,8 @@ details:not([open]) > :not(summary) { display: none; }
 .prep-link span { color: var(--muted); font-size: var(--fs-s); }
 
 /* Study navigation */
-.study-search-wrap { position: relative; margin: 0 0 16px; }
+/* 검색창은 어느 탭에서나 보인다. 결과 목록이 위에 붙는 탭 줄보다 위에 오게 한다 */
+.study-search-wrap { position: relative; z-index: 5; margin: 0 0 16px; }
 .study-search {
   width: 100%;
   min-height: 44px;
@@ -819,6 +818,10 @@ body.sheet-open { overflow: hidden; }
 <body>
   <main class="wrap">
     <div class="brand-row"><h1>Art</h1></div>
+    <div class="study-search-wrap">
+      <input class="study-search" id="study-search" type="search" inputmode="search" autocomplete="off" aria-label="시대, 작가, 대표작, 미술사 연대기, 사전 항목 통합 검색" aria-controls="study-search-results" aria-expanded="false" placeholder="작가 · 작품 · 시대 · 용어 검색">
+      <div class="search-results" id="study-search-results" role="listbox" hidden></div>
+    </div>
     <nav class="primary-tabs" aria-label="미술 기록 메뉴" role="tablist">
       <button class="primary-tab" id="tab-exhibits" type="button" role="tab" aria-controls="exhibit-view" aria-selected="true" data-view="exhibits">기록</button>
       <button class="primary-tab" id="tab-eras" type="button" role="tab" aria-controls="study-view" aria-selected="false" data-view="study" data-study-section="eras">시대·작가</button>
@@ -840,11 +843,6 @@ body.sheet-open { overflow: hidden; }
     </section>
 
     <section class="view-panel" id="study-view" role="tabpanel" aria-labelledby="tab-eras" hidden>
-      <div class="study-search-wrap">
-        <input class="study-search" id="study-search" type="search" inputmode="search" autocomplete="off" aria-label="시대, 작가, 대표작, 미술사 연대기, 사전 항목 통합 검색" aria-controls="study-search-results" aria-expanded="false" placeholder="미술 공부 전체 검색">
-        <div class="search-results" id="study-search-results" role="listbox" hidden></div>
-      </div>
-
       <section class="study-panel" id="study-eras" data-study-panel="eras">
         <nav class="chip-tabs" id="region-tabs" role="tablist" aria-label="지역 선택"></nav>
         <div class="study-cards" id="era-overviews"></div>
